@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota Geometri Interaktif 3D & Isometrik (Malaysia / Bahasa Melayu)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- MediaPipe Hands & Camera Utils CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glow-btn {
+            transition: all 0.3s ease;
+        }
+        .glow-btn:hover {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none">
+
+    <!-- Header -->
+    <header class="glass-panel border-b border-gray-800 px-6 py-4 flex flex-col md:flex-row justify-between items-center z-20 sticky top-0">
+        <div class="flex items-center space-x-3 mb-2 md:mb-0">
+            <div class="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide bg-gradient-to-r from-blue-400 via-yellow-300 to-white bg-clip-text text-transparent">
+                    GEOMETRI INTERAKTIF 3D & ISOMETRIK
+                </h1>
+                <p class="text-xs text-gray-400">Pendidikan Matematik Tingkatan 2 KSSM • Malaysia</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2 bg-gray-900/80 px-3 py-1.5 rounded-full border border-gray-700 text-xs">
+                <span id="cam-status" class="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                <span id="cam-status-text" class="text-gray-300 font-medium">Kamera Ditutup</span>
+            </div>
+            <button id="toggle-cam-btn" onclick="toggleCamera()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-xs font-semibold glow-btn transition flex items-center space-x-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span id="cam-btn-label">Buka Webcam AI</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 max-w-[1600px] w-full mx-auto relative">
+
+        <!-- Left Sidebar: Gesture Guide & Webcam View -->
+        <div class="lg:col-span-3 flex flex-col space-y-4 z-10">
+            <!-- Gesture Guide Panel -->
+            <div class="glass-panel rounded-2xl p-4 shadow-xl border border-gray-800/80">
+                <h2 class="text-sm font-semibold text-yellow-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+                    <span>Panduan Kawalan Isyarat</span>
+                    <span class="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded">MediaPipe AI</span>
+                </h2>
+                <ul class="space-y-2.5 text-xs text-gray-300">
+                    <li class="flex items-start space-x-2">
+                        <span class="bg-blue-500/20 text-blue-400 p-1 rounded font-bold">1</span>
+                        <div><strong class="text-white">Putar (Rotate):</strong> Buka tapak tangan dan gerakkan perlahan di hadapan kamera untuk putar 360°.</div>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="bg-blue-500/20 text-blue-400 p-1 rounded font-bold">2</span>
+                        <div><strong class="text-white">Zum (Zoom / Cubit):</strong> Rapatkan ibu jari & telunjuk untuk zum masuk/keluar objek 3D.</div>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="bg-blue-500/20 text-blue-400 p-1 rounded font-bold">3</span>
+                        <div><strong class="text-white">Buka Permukaan (Net):</strong> Genggam tangan penuh (fist) untuk lipat/buka jaringan permukaan.</div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Live Webcam / Landmarks Preview Box -->
+            <div class="glass-panel rounded-2xl p-3 shadow-xl border border-gray-800/80 flex flex-col items-center relative overflow-hidden">
+                <div class="w-full flex justify-between items-center mb-2 px-1">
+                    <span class="text-xs font-medium text-gray-400">Paparan Kamera AI</span>
+                    <span id="gesture-detected" class="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/30">Mod Manual</span>
+                </div>
+                <div class="relative w-full aspect-video bg-black/60 rounded-xl overflow-hidden border border-gray-800 flex items-center justify-center">
+                    <video id="webcam" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100 hidden" autoplay playsinline muted></video>
+                    <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover transform -scale-x-100"></canvas>
+                    <div id="cam-placeholder" class="text-center p-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-xs text-gray-400">Klik "Buka Webcam AI" untuk kawalan tangan langsung.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mathematical Formulas & Info Panel -->
+            <div class="glass-panel rounded-2xl p-4 shadow-xl border border-gray-800/80 flex-1 flex flex-col justify-between">
+                <div>
+                    <h3 id="shape-title-header" class="text-base font-bold text-yellow-300 mb-1">Kubus (Segi Empat Sama)</h3>
+                    <p id="shape-desc" class="text-xs text-gray-300 mb-3 leading-relaxed">Bentuk 3D yang mempunyai 6 permukaan segi empat sama yang kongruen, 12 tepi dan 8 bucu.</p>
+                    <div class="space-y-2 bg-gray-900/60 p-3 rounded-xl border border-gray-800/80 text-xs">
+                        <div>
+                            <span class="text-gray-400 font-semibold block mb-0.5">Formula Luas Permukaan ($L$):</span>
+                            <span id="formula-surface" class="font-mono text-blue-300 bg-blue-950/50 px-2 py-1 rounded block border border-blue-900/50">6 × ($s$ × $s$)</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400 font-semibold block mb-0.5">Formula Isipadu ($V$):</span>
+                            <span id="formula-volume" class="font-mono text-green-300 bg-green-950/50 px-2 py-1 rounded block border border-green-900/50">$s$ × $s$ × $s$</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-gray-800 flex justify-between items-center">
+                    <button onclick="toggleUnfold()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-gray-950 text-xs font-bold py-2 px-3 rounded-lg transition shadow-md flex items-center justify-center space-x-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                        <span id="unfold-btn-text">Buka Jaringan Permukaan (Net)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center / Right: 3D Viewport -->
+        <div class="lg:col-span-9 flex flex-col space-y-4">
+            <div class="glass-panel rounded-2xl p-2 shadow-2xl border border-gray-800/80 relative flex-1 min-h-[500px] flex flex-col overflow-hidden">
+                
+                <!-- Viewport Control Overlay -->
+                <div class="absolute top-4 right-4 z-10 flex space-x-2">
+                    <button onclick="resetCameraView()" class="bg-gray-800/80 hover:bg-gray-700 text-gray-200 p-2 rounded-xl border border-gray-700 text-xs font-medium shadow-lg backdrop-blur flex items-center space-x-1 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Reset Kamera</span>
+                    </button>
+                </div>
+
+                <!-- Three.js Canvas Container -->
+                <div id="canvas-container" class="w-full flex-1 rounded-xl relative cursor-grab active:cursor-grabbing overflow-hidden bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950">
+                    <!-- Interactive Helper Overlay Text -->
+                    <div id="interaction-hint" class="absolute bottom-4 left-4 pointer-events-none bg-black/50 backdrop-blur px-3 py-1.5 rounded-lg border border-white/10 text-xs text-gray-400">
+                        💡 Klik dan seret tetikus untuk memutar objek 3D. Gunakan roda skrol untuk zum.
+                    </div>
+                </div>
+
+                <!-- Bottom Navigation Menu: Shape Selector -->
+                <div class="mt-3 p-2 bg-gray-900/90 rounded-xl border border-gray-800 flex items-center overflow-x-auto space-x-2 scrollbar-thin">
+                    <button onclick="selectShape('cube')" id="btn-cube" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 text-white shadow-md transition flex items-center space-x-2">
+                        <span>🧊</span>
+                        <span>Kubus (Segi Empat Sama)</span>
+                    </button>
+                    <button onclick="selectShape('cuboid')" id="btn-cuboid" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>📦</span>
+                        <span>Kuboid (Segi Empat Tepat)</span>
+                    </button>
+                    <button onclick="selectShape('pyramid')" id="btn-pyramid" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>🔺</span>
+                        <span>Piramid</span>
+                    </button>
+                    <button onclick="selectShape('cone')" id="btn-cone" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>🍦</span>
+                        <span>Kon</span>
+                    </button>
+                    <button onclick="selectShape('cylinder')" id="btn-cylinder" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>🛢️</span>
+                        <span>Silinder</span>
+                    </button>
+                    <button onclick="selectShape('sphere')" id="btn-sphere" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>⚽</span>
+                        <span>Sfera</span>
+                    </button>
+                    <button onclick="selectShape('rhombus')" id="btn-rhombus" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>🔶</span>
+                        <span>Prisma Rhombus</span>
+                    </button>
+                    <button onclick="selectShape('triangle')" id="btn-triangle" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>📐</span>
+                        <span>Prisma Segi Tiga</span>
+                    </button>
+                    <button onclick="selectShape('trapezium')" id="btn-trapezium" class="shape-tab flex-shrink-0 px-4 py-2 rounded-lg text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-gray-300 transition flex items-center space-x-2">
+                        <span>⏢</span>
+                        <span>Prisma Trapezium</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JavaScript Application Code -->
+    <script>
+        const shapeData = {
+            cube: {
+                name: "Kubus (Segi Empat Sama)",
+                desc: "Bentuk 3D dengan 6 permukaan segi empat sama yang kongruen, 12 tepi yang sama panjang, dan 8 bucu.",
+                surface: "6 × ($s$²)",
+                volume: "$s$³",
+                color: 0x3b82f6
+            },
+            cuboid: {
+                name: "Kuboid (Segi Empat Tepat)",
+                desc: "Bentuk 3D dengan 6 permukaan segi empat tepat di mana permukaan yang bertentangan adalah sama saiz.",
+                surface: "2($lw$ + $lh$ + $wh$)",
+                volume: "$p$ × $l$ × $t$",
+                color: 0x10b981
+            },
+            pyramid: {
+                name: "Piramid Tapak Segi Empat Sama",
+                desc: "Bentuk 3D dengan tapak segi empat sama dan 4 permukaan sisi berbentuk segi tiga yang bertemu di satu puncak.",
+                surface: "Luas Tapak + 4 × (½ × tapak × tinggi sisi)",
+                volume: "⅓ × Luas Tapak × Tinggi",
+                color: 0xf59e0b
+            },
+            cone: {
+                name: "Kon",
+                desc: "Bentuk 3D dengan satu tapak bulatan rata dan permukaan melengkung yang meruncing ke satu puncak.",
+                surface: "$\\pi r^2 + \\pi r s$",
+                volume: "⅓ $\\pi r^2 t$",
+                color: 0xec4899
+            },
+            cylinder: {
+                name: "Silinder",
+                desc: "Bentuk 3D dengan dua tapak bulatan selari yang kongruen dan satu permukaan melengkung.",
+                surface: "$2\\pi r^2 + 2\\pi r t$",
+                volume: "$\\pi r^2 t$",
+                color: 0x8b5cf6
+            },
+            sphere: {
+                name: "Sfera",
+                desc: "Bentuk 3D bulat sempurna di mana setiap titik pada permukaan adalah sama jarak dari pusat.",
+                surface: "$4\\pi r^2$",
+                volume: "⁴/₃ $\\pi r^3$",
+                color: 0x06b6d4
+            },
+            rhombus: {
+                name: "Prisma Rhombus",
+                desc: "Prisma tegak yang mempunyai keratan rentas seragam berbentuk rhombus (lelupur).",
+                surface: "2(Luas Tapak) + (Keliling Tapak × Tinggi)",
+                volume: "Luas Tapak × Tinggi",
+                color: 0xeab308
+            },
+            triangle: {
+                name: "Prisma Segi Tiga",
+                desc: "Prisma tegak dengan dua tapak segi tiga selari dan tiga permukaan sisi segi empat tepat.",
+                surface: "2(Luas Segi Tiga) + (Keliling Tapak × Tinggi)",
+                volume: "Luas Segi Tiga × Tinggi",
+                color: 0xf43f5e
+            },
+            trapezium: {
+                name: "Prisma Trapezium",
+                desc: "Prisma dengan keratan rentas seragam berbentuk trapezium pada kedua-dua hujungnya.",
+                surface: "2(Luas Trapezium) + Jumlah Luas 4 Sisi Segi Empat",
+                volume: "Luas Trapezium × Tinggi",
+                color: 0x6366f1
+            }
+        };
+
+        let scene, camera, renderer;
+        let currentShapeMesh = null;
+        let currentShapeKey = 'cube';
+        let isUnfolded = false;
+        let unfoldProgress = 0; // 0 = folded, 1 = fully unfolded
+        let targetUnfoldProgress = 0;
+
+        // Interaction state variables
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraZoom = 5;
+
+        // MediaPipe Camera & Hands State
+        let cameraStream = null;
+        let handsInstance = null;
+        let camUtilsInstance = null;
+        let isCamActive = false;
+
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 2, cameraZoom);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(5, 10, 7);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x3b82f6, 1, 50);
+            pointLight.position.set(-5, -5, -5);
+            scene.add(pointLight);
+
+            // Build initial shape
+            buildShape(currentShapeKey);
+
+            // Mouse event listeners for 360 rotation & zoom
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging || !currentShapeMesh) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                currentShapeMesh.rotation.y += deltaX * 0.01;
+                currentShapeMesh.rotation.x += deltaY * 0.01;
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                cameraZoom += e.deltaY * 0.005;
+                cameraZoom = Math.max(2, Math.min(10, cameraZoom));
+                camera.position.z = cameraZoom;
+            }, { passive: false });
+
+            // Touch support for mobile devices
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!isDragging || !currentShapeMesh || e.touches.length !== 1) return;
+                const deltaX = e.touches[0].clientX - previousMousePosition.x;
+                const deltaY = e.touches[0].clientY - previousMousePosition.y;
+
+                currentShapeMesh.rotation.y += deltaX * 0.01;
+                currentShapeMesh.rotation.x += deltaY * 0.01;
+
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            });
+
+            window.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            // Window resize handler
+            window.addEventListener('resize', onWindowResize);
+
+            // Start animation loop
+            animate();
+        }
+
+        function buildShape(key) {
+            currentShapeKey = key;
+            if (currentShapeMesh) {
+                scene.remove(currentShapeMesh);
+            }
+
+            const data = shapeData[key];
+            document.getElementById('shape-title-header').innerText = data.name;
+            document.getElementById('shape-desc').innerText = data.desc;
+            document.getElementById('formula-surface').innerHTML = data.surface;
+            document.getElementById('formula-volume').innerHTML = data.volume;
+
+            // Highlight active tab
+            document.querySelectorAll('.shape-tab').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-gray-800', 'text-gray-300');
+            });
+            const activeBtn = document.getElementById(`btn-${key}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-gray-800', 'text-gray-300');
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+            }
+
+            // Create Group for shape and its net components
+            currentShapeMesh = new THREE.Group();
+            
+            const material = new THREE.MeshStandardMaterial({
+                color: data.color,
+                roughness: 0.3,
+                metalness: 0.2,
+                side: THREE.DoubleSide
+            });
+
+            const wireframeMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.25
+            });
+
+            if (key === 'cube') {
+                // Central Cube
+                const boxGeo = new THREE.BoxGeometry(1.8, 1.8, 1.8);
+                const mesh = new THREE.Mesh(boxGeo, material);
+                const wire = new THREE.Mesh(boxGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'cube', mesh: mesh };
+            } else if (key === 'cuboid') {
+                const boxGeo = new THREE.BoxGeometry(2.4, 1.4, 1.8);
+                const mesh = new THREE.Mesh(boxGeo, material);
+                const wire = new THREE.Mesh(boxGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'cuboid', mesh: mesh };
+            } else if (key === 'pyramid') {
+                const pyrGeo = new THREE.ConeGeometry(1.5, 2.2, 4);
+                // Rotate to square pyramid alignment
+                pyrGeo.rotateY(Math.PI / 4);
+                const mesh = new THREE.Mesh(pyrGeo, material);
+                const wire = new THREE.Mesh(pyrGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'pyramid', mesh: mesh };
+            } else if (key === 'cone') {
+                const coneGeo = new THREE.ConeGeometry(1.4, 2.4, 32);
+                const mesh = new THREE.Mesh(coneGeo, material);
+                const wire = new THREE.Mesh(coneGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'cone', mesh: mesh };
+            } else if (key === 'cylinder') {
+                const cylGeo = new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32);
+                const mesh = new THREE.Mesh(cylGeo, material);
+                const wire = new THREE.Mesh(cylGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'cylinder', mesh: mesh };
+            } else if (key === 'sphere') {
+                const sphGeo = new THREE.SphereGeometry(1.5, 32, 32);
+                const mesh = new THREE.Mesh(sphGeo, material);
+                const wire = new THREE.Mesh(sphGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'sphere', mesh: mesh };
+            } else if (key === 'rhombus' || key === 'triangle' || key === 'trapezium') {
+                // Prism geometries
+                let prismGeo = new THREE.CylinderGeometry(1.3, 1.3, 2.5, key === 'triangle' ? 3 : (key === 'rhombus' ? 4 : 5));
+                prismGeo.rotateZ(Math.PI / 2);
+                const mesh = new THREE.Mesh(prismGeo, material);
+                const wire = new THREE.Mesh(prismGeo, wireframeMat);
+                mesh.add(wire);
+                currentShapeMesh.add(mesh);
+                currentShapeMesh.userData = { type: 'prism', mesh: mesh };
+            }
+
+            scene.add(currentShapeMesh);
+            isUnfolded = false;
+            targetUnfoldProgress = 0;
+            unfoldProgress = 0;
+            document.getElementById('unfold-btn-text').innerText = "Buka Jaringan Permukaan (Net)";
+        }
+
+        function toggleUnfold() {
+            isUnfolded = !isUnfolded;
+            targetUnfoldProgress = isUnfolded ? 1 : 0;
+            document.getElementById('unfold-btn-text').innerText = isUnfolded ? "Lipat Semula Bentuk 3D" : "Buka Jaringan Permukaan (Net)";
+        }
+
+        function resetCameraView() {
+            if (currentShapeMesh) {
+                currentShapeMesh.rotation.set(0, 0, 0);
+            }
+            cameraZoom = 5;
+            camera.position.set(0, 2, cameraZoom);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Smooth unfolding animation transition
+            unfoldProgress += (targetUnfoldProgress - unfoldProgress) * 0.1;
+            if (currentShapeMesh) {
+                // Slight idle rotation when not dragging
+                if (!isDragging && unfoldProgress < 0.05) {
+                    currentShapeMesh.rotation.y += 0.003;
+                }
+                // Scale effect or exploded net effect
+                const scaleFactor = 1 + unfoldProgress * 0.2;
+                currentShapeMesh.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function toggleCamera() {
+            isCamActive = !isCamActive;
+            const videoElement = document.getElementById('webcam');
+            const placeholder = document.getElementById('cam-placeholder');
+            const statusDot = document.getElementById('cam-status');
+            const statusText = document.getElementById('cam-status-text');
+            const camBtnLabel = document.getElementById('cam-btn-label');
+
+            if (isCamActive) {
+                camBtnLabel.innerText = "Tutup Webcam AI";
+                statusDot.classList.remove('bg-red-500');
+                statusDot.classList.add('bg-green-500', 'animate-none');
+                statusText.innerText = "Webcam AI Aktif";
+                placeholder.classList.add('hidden');
+                videoElement.classList.remove('hidden');
+
+                initMediaPipeHands(videoElement);
+            } else {
+                camBtnLabel.innerText = "Buka Webcam AI";
+                statusDot.classList.remove('bg-green-500', 'animate-none');
+                statusDot.classList.add('bg-red-500');
+                statusText.innerText = "Kamera Ditutup";
+                placeholder.classList.remove('hidden');
+                videoElement.classList.add('hidden');
+
+                if (cameraStream) {
+                    cameraStream.stop();
+                }
+                document.getElementById('gesture-detected').innerText = "Mod Manual";
+            }
+        }
+
+        function initMediaPipeHands(videoElement) {
+            const canvasElement = document.getElementById('output_canvas');
+            const canvasCtx = canvasElement.getContext('2d');
+
+            handsInstance = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+
+            handsInstance.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+
+            handsInstance.onResults((results) => {
+                canvasCtx.save();
+                canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const landmarks = results.multiHandLandmarks[0];
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#3b82f6', lineWidth: 2});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#f59e0b', lineWidth: 1, radius: 3});
+
+                    processHandGestures(landmarks);
+                } else {
+                    document.getElementById('gesture-detected').innerText = "Tangan Tidak Dikesan";
+                }
+                canvasCtx.restore();
+            });
+
+            camUtilsInstance = new Camera(videoElement, {
+                onFrame: async () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    await handsInstance.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+
+            camUtilsInstance.start().catch(err => {
+                console.error("Camera error:", err);
+                alert("Gagal mengakses kamera web. Sila pastikan kebenaran kamera diberikan.");
+                toggleCamera();
+            });
+        }
+
+        function processHandGestures(landmarks) {
+            // Landmark 0: Wrist, 4: Thumb tip, 8: Index tip, 12: Middle tip
+            const thumbTip = landmarks[4];
+            const indexTip = landmarks[8];
+            const wrist = landmarks[0];
+            const middleTip = landmarks[12];
+
+            // Calculate pinch distance (thumb & index)
+            const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+            
+            // Calculate fist check (fingers curled towards wrist)
+            const indexDist = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y);
+            const middleDist = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y);
+
+            const gestureLabel = document.getElementById('gesture-detected');
+
+            if (pinchDist < 0.05) {
+                // Pinch Gesture -> Zoom
+                gestureLabel.innerText = "Isyarat: Zum (Cubit)";
+                cameraZoom += (0.05 - pinchDist) * 2;
+                cameraZoom = Math.max(2, Math.min(10, cameraZoom));
+                camera.position.z = cameraZoom;
+            } else if (indexDist < 0.25 && middleDist < 0.25) {
+                // Fist Gesture -> Toggle Unfold Net
+                gestureLabel.innerText = "Isyarat: Genggaman (Buka Net)";
+                if (!isUnfolded) {
+                    isUnfolded = true;
+                    targetUnfoldProgress = 1;
+                    document.getElementById('unfold-btn-text').innerText = "Lipat Semula Bentuk 3D";
+                }
+            } else {
+                // Open Hand -> Rotate based on palm position
+                gestureLabel.innerText = "Isyarat: Putar 360°";
+                if (currentShapeMesh) {
+                    currentShapeMesh.rotation.y = (indexTip.x - 0.5) * Math.PI * 2;
+                    currentShapeMesh.rotation.x = (indexTip.y - 0.5) * Math.PI;
+                }
+            }
+        }
+
+        // Initialize Three.js on window load
+        window.onload = function() {
+            initThreeJS();
+        };
+    </script>
+</body>
+</html>
